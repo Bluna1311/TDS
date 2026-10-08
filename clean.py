@@ -3,23 +3,9 @@ from pathlib import Path
 
 import pandas as pd
 
+from config import COMPANIES, METRICS, RAW_DIR, STAGING_FILE
+
 FORMS = ["10-Q", "10-K", "10-Q/A", "10-K/A"]
-
-# each metric -> the tag names it has been filed under
-METRICS = {
-    "revenue": ["RevenueFromContractWithCustomerExcludingAssessedTax", "Revenues", "SalesRevenueNet"],
-    "operating_income": ["OperatingIncomeLoss"],
-    "net_income": ["NetIncomeLoss"],
-}
-
-# file name for company data interested.
-COMPANIES = {
-    "apple": "Apple",
-    "microsoft": "Microsoft",
-    "alphabet": "Alphabet",
-    "amazon": "Amazon",
-    "nvidia": "NVIDIA",
-}
 
 
 def period_type(days):
@@ -35,7 +21,7 @@ def period_type(days):
 
 
 def to_quarters(facts):
-    #Raw list of facts for one metric -> one row per quarter
+
     df = pd.DataFrame(facts)
 
     # dates and period lengths
@@ -44,11 +30,16 @@ def to_quarters(facts):
     df["days"] = (df["end"] - df["start"]).dt.days
     df["period"] = df["days"].apply(period_type)
 
+    # official reports only, then remove duplicates
+    # Match on end date + period type, not start date: Microsoft filed one
+    # quarter with a start date a day off.
     df = df[df["form"].isin(FORMS)]
     df = df.sort_values("filed").drop_duplicates(subset=["end", "period"], keep="last")
 
+    keep = ["start", "end", "val", "tag", "filed"]
+
     # Q4 = full year - nine months
-    fy = df[df["period"] == "FY"][["start", "end", "val"]]
+    fy = df[df["period"] == "FY"][keep]
     nine = df[df["period"] == "9M"][["start", "end", "val"]]
     q4 = fy.merge(nine, on="start", suffixes=("_fy", "_9m"))
     q4["val"] = q4["val_fy"] - q4["val_9m"]
@@ -56,55 +47,53 @@ def to_quarters(facts):
     q4["end"] = q4["end_fy"]
 
     # reported quarters + derived Q4s, no duplication
-    reported = df[df["period"] == "Q"][["start", "end", "val"]].copy()
-    reported["source"] = "reported"
-    derived = q4[["start", "end", "val"]].copy()
-    derived["source"] = "derived"
+    reported = df[df["period"] == "Q"][keep].copy()
+    reported["is_derived"] = False
+    derived = q4[keep].copy()
+    derived["is_derived"] = True
     derived = derived[~derived["end"].isin(reported["end"])]
 
     quarters = pd.concat([reported, derived])
     return quarters.sort_values("end").reset_index(drop=True)
 
 
-def clean_company(company):
+def clean_company(key):
 
-    with open(f"data/raw/{company}.json") as f:
+    with open(Path(RAW_DIR) / f"{key}.json") as f:
         data = json.load(f)
     gaap = data["facts"]["us-gaap"]
 
-    table = None
-    for name, tags in METRICS.items():
+    tables = []
+    for metric, tags in METRICS.items():
         facts = []
         for tag in tags:
             if tag in gaap:
-                facts += gaap[tag]["units"]["USD"]
+                for fact in gaap[tag]["units"]["USD"]:
+                    facts.append({**fact, "tag": tag})   # remember which tag each value came from
         q = to_quarters(facts)
-        q = q[["start", "end", "val"]].rename(columns={"val": name})
-        if table is None:
-            table = q
-        else:
-            table = table.merge(q, on=["start", "end"], how="outer")
+        q["metric"] = metric
+        tables.append(q)
 
-    table["company"] = COMPANIES[company]
+    table = pd.concat(tables)
+    table["company"] = key
     return table
 
 
 def clean():
-    #Cleanand save data/clean/financials.csv
-    tables = [clean_company(c) for c in COMPANIES]
-    all_companies = pd.concat(tables)
-    all_companies = all_companies[all_companies["end"] >= "2015-01-01"]
+    """Clean every company into one long table: one row per company, quarter and metric."""
+    long = pd.concat([clean_company(key) for key in COMPANIES])
+    long = long[long["end"] >= "2015-01-01"]
+    long = long.rename(columns={"start": "period_start", "end": "period_end",
+                                "val": "value", "tag": "source_tag", "filed": "filed_date"})
+    long = long[["company", "metric", "period_start", "period_end", "value",
+                 "is_derived", "source_tag", "filed_date"]]
 
-    all_companies["operating_margin"] = all_companies["operating_income"] / all_companies["revenue"]
-    all_companies["net_margin"] = all_companies["net_income"] / all_companies["revenue"]
+    Path(STAGING_FILE).parent.mkdir(parents=True, exist_ok=True)
+    long.to_csv(STAGING_FILE, index=False)
 
-    CLEAN_DIR = Path("data/clean")
-    CLEAN_DIR.mkdir(parents=True, exist_ok=True)
-    all_companies.to_csv(CLEAN_DIR / "financials.csv", index=False)
-
-    print(all_companies.groupby("company").size())
-    print("empty cells:", all_companies.isna().sum().sum())
-    print("duplicate quarters:", all_companies.duplicated(subset=["company", "end"]).sum())
+    print(long.groupby(["company", "metric"]).size().unstack())
+    print("empty cells:", long.isna().sum().sum())
+    print("duplicates:", long.duplicated(subset=["company", "metric", "period_end"]).sum())
 
 
 if __name__ == "__main__":

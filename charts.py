@@ -1,38 +1,47 @@
 from pathlib import Path
 
+import duckdb
 import matplotlib.pyplot as plt
-import pandas as pd
+
+from config import WAREHOUSE_FILE
+
+CHART_DIR = Path("output")
+
+
+def run_query(con, name):
+
+    return con.execute(Path(f"sql/{name}.sql").read_text()).df()
+
+
+def line_chart(df, column, title, ylabel, filename, scale=1):
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    for company, group in df.groupby("company"):
+        ax.plot(group["mid_date"], group[column] * scale, label=company)
+    ax.set_title(title)
+    ax.set_ylabel(ylabel)
+    ax.legend()
+    ax.grid(alpha=0.3)
+    fig.savefig(CHART_DIR / filename, dpi=150, bbox_inches="tight")
+    plt.close(fig)
 
 
 def make_charts():
-    df = pd.read_csv("data/clean/financials.csv", parse_dates=["start", "end"])
 
-
-    # incase charts folder doesnt exist.
-    CHART_DIR = Path("charts")
     CHART_DIR.mkdir(exist_ok=True)
+    con = duckdb.connect(WAREHOUSE_FILE, read_only=True)
 
-    # 1. Quarterly revenue, one line per company
-    fig, ax = plt.subplots(figsize=(10, 5))
-    for company, group in df.groupby("company"):
-        ax.plot(group["end"], group["revenue"] / 1e9, label=company)
-    ax.set_title("Quarterly revenue")
-    ax.set_ylabel("$ billions")
-    ax.legend()
-    ax.grid(alpha=0.3)
-    fig.savefig(CHART_DIR / "revenue.png", dpi=150, bbox_inches="tight")
+    line_chart(run_query(con, "revenue"), "revenue_bn",
+               "Quarterly revenue", "$ billions", "revenue.png")
+    line_chart(run_query(con, "operating_margin"), "operating_margin",
+               "Operating margin (operating income / revenue)", "%", "operating_margin.png", scale=100)
+    line_chart(run_query(con, "yoy_growth").dropna(), "yoy_growth",
+               "Revenue growth vs same quarter a year earlier", "%", "yoy_growth.png", scale=100)
 
-    # 2. Operating margin, one line per company
-    fig, ax = plt.subplots(figsize=(10, 5))
-    for company, group in df.groupby("company"):
-        ax.plot(group["end"], group["operating_margin"] * 100, label=company)
-    ax.set_title("Operating margin (operating income ÷ revenue)")
-    ax.set_ylabel("%")
-    ax.legend()
-    ax.grid(alpha=0.3)
-    fig.savefig(CHART_DIR / "operating_margin.png", dpi=150, bbox_inches="tight")
-
-    print("saved charts to", CHART_DIR)
+    annual = run_query(con, "annual_summary")
+    annual.to_csv(CHART_DIR / "annual_summary.csv", index=False)
+    con.close()
+    print("saved output to", CHART_DIR, "as annual_summary.csv")
 
 
 if __name__ == "__main__":
