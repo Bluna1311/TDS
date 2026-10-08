@@ -193,3 +193,10 @@ data/
   annual_summary.csv
 output/              chart images
 ```
+
+## What i would do next
+
+- Make the analysis on an application using streamlit.
+- increase number of companies.
+- feature for allowing user to choose which companies they want to search via a menu
+- clean UI design 
