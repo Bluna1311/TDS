@@ -165,11 +165,11 @@ I used AI for the following
 
 - helping me understand the API and CIK usage
 - exploring the raw JSON before any cleaning was written;
-- noticing the Microsoft 2015 dip in the chart and investigating it before accepting it.
+- investigating the Microsoft 2015 dip, which I noticed in the chart, to confirm it was a real event
 - Assisting me debug the SQL queries
-- doing exploratory analysis on the data set.
-- readme, comments and final checks of the project structure.
-- helping me solve spot the microsoft start date issue and to use the end date & period key 
+- Doing exploratory analysis on the data set.
+- ReadMe, comments and final checks of the project structure.
+- Helping me solve spot the microsoft start date issue and to use the end date & period key 
 
 ## Project structure
 
