@@ -41,14 +41,14 @@ It's free, with no API key. Each company is identified by its CIK (the SEC's com
 - **The data is nested several levels deep**: `facts → us-gaap → tag name → units → USD → list of figures`, each with a start date, end date, value, form type and filing date.
 - **The `fp` (fiscal period) field describes the filing, not the figure.** A Q2 report contains both "Q2 alone" and "first six months", both labelled `Q2`. Only the dates tell them apart.
 
-**The raw data is committed** in `data/raw/` where it gets processed to staging 
+**The raw data is committed** in `data/raw/` where it gets processed to staging. 
 ## How it works
 
 ```
 EXTRACT           TRANSFORM               LOAD                          ANALYSE
 fetcher.py   →    clean.py           →    load.py + sql/schema.sql  →   sql/*.sql → charts.py
 data/raw/*.json   data/staging/           data/warehouse.duckdb         output/*.png
-                  financials_long.csv     (star schema)                 data/annual_summary.csv
+                  financials_long.csv     (star schema)                 output/annual_summary.csv
 ```
 
 Settings shared by every step (companies, metrics, file paths) live in `config.py`, so adding a company is a one-line change.
@@ -124,7 +124,7 @@ Two details: growth is measured against **the same quarter a year earlier**, not
 - **Size vs efficiency:** Amazon has by far the most revenue (\$717bn in 2025) but the lowest margin (11%), because retail is expensive to run. Microsoft keeps 47 cents of every dollar of sales.
 - **NVIDIA** grew revenue from \$27bn in 2022 to $216bn in 2025, peaking at about 265% year-on-year growth in early 2024 with demand for AI chips, and now has the highest margin of the five (60%).
 
-The yearly figures are in `data/annual_summary.csv`.
+The yearly figures are in `output/annual_summary.csv`.
 
 ## How to run it
 

@@ -1,0 +1,5 @@
+explore.py
+.venv/
+.idea/
+__pycache__/
+data/warehouse.duckdb
