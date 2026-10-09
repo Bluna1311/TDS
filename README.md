@@ -6,7 +6,7 @@ An ETL pipeline that extracts quarterly financial results for five large US tech
 
 ## About me
 
-My name is Brian Luna, and my background is mainly in maths, physics and finance (BSc Theoretical Physics, PG Dip Financial Mathematics, MSc Financial Engineering). I've worked in IT consultancy in a range of roles, including automation, development and data engineering. 
+My name is Brian Luna, and my background is mainly in maths, physics and finance (BSc Theoretical Physics, PG Dip Financial Mathematics, MSc Financial Engineering). I've worked in IT consultancy in a range of roles, including automation, development and data engineering. My technical background revolves Python for ML and general data sceince/engineering, C++ and SQL with experience using AWS, Linux and Java
 
 
 ## Why I'm applying
