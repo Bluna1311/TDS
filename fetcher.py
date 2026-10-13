@@ -14,8 +14,11 @@ def fetch():
 
     for key, company in COMPANIES.items():
         url = f"https://data.sec.gov/api/xbrl/companyfacts/CIK{company['cik']:010d}.json"
-        response = requests.get(url, headers={"User-Agent": USER_AGENT})
-        response.raise_for_status()
+        try:
+            response = requests.get(url, headers={"User-Agent": USER_AGENT})
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            raise SystemExit(f"Failed to fetch {key}: {e}")
         data = response.json()
 
         with open(raw_dir / f"{key}.json", "w") as f:
