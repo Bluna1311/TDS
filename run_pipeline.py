@@ -1,7 +1,7 @@
 from fetcher import fetch
 from clean import clean
 from load import load
-from output import make_charts
+from charts import make_charts
 
 print("1. Extract: fetching data from the SEC...")
 fetch()
